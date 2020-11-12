@@ -1,0 +1,75 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: pb-service
+  namespace: staging
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+  #type: LoadBalancer
+  selector:
+    app: sosmed
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pb-deployment
+  namespace: staging
+  labels:
+    app: sosmed
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sosmed
+      track: stable
+  template:
+    metadata:
+      labels:
+        app: sosmed
+        track: stable
+    spec:
+      containers:
+      - name: sosmed
+        image: hirzadaulay/sosmed:latest
+        ports:
+        - containerPort: 80
+        env:
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: rahasia
+                  key: host
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: rahasia
+                  key: user
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: rahasia
+                  key: password
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: rahasia
+                  key: name
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: pb-ingress
+  namespace: staging
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: sosmed.bukber.xyz
+    http:
+      paths:
+      #- path: /
+      - backend:
+          serviceName: pb-service
+          servicePort: 80
